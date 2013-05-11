@@ -108,3 +108,12 @@ $(ALLHEXFILES):
 	$(MAKE) clean; \
 	$(MAKE) main.hex F_CPU=$${clock}000000 DEVICE=atmega$$device BOOTLOADER_ADDRESS=$$addr DEFINES=-DUSE_AUTOCONFIG=1
 	mv main.hex $@
+
+vusb:
+	$(MAKE)
+
+bootloader:
+	$(MAKE)
+
+firmware:
+	$(MAKE)
