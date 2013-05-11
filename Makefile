@@ -14,10 +14,6 @@ BOOTLOADER_ADDRESS = 1780
 # This is set for using a TI launchpad programmed as an avr910
 PROGRAMMER = -c avr910 -b 9600 -P /dev/ttyACM0
 
-FUSEOPT_8 = -U hfuse:w:0xc0:m -U lfuse:w:0x9f:m
-FUSEOPT_88 = -U hfuse:w:0xd6:m -U lfuse:w:0xdf:m -U efuse:w:0x00:m
-FUSEOPT_168 = -U hfuse:w:0xd6:m -U lfuse:w:0xdf:m -U efuse:w:0x00:m
-FUSEOPT_328 = -U lfuse:w:0xf7:m -U hfuse:w:0xda:m -U efuse:w:0x03:m
 FUSEOPT_t85 = -U lfuse:w:0xe1:m -U hfuse:w:0xdd:m -U efuse:w:0xfe:m
 FUSEOPT_t85_DISABLERESET = -U lfuse:w:0xe1:m -U efuse:w:0xfe:m -U hfuse:w:0x5d:m
 
@@ -31,13 +27,19 @@ DEFINES = -DBOOTLOADER_ADDRESS=0x$(BOOTLOADER_ADDRESS) #-DDEBUG_LEVEL=2
 CFLAGS = -Wall -Os -fno-move-loop-invariants -fno-tree-scev-cprop \
 	 -fno-inline-small-functions -I. -Ilibs-device -mmcu=$(DEVICE) \
 	 -DF_CPU=$(F_CPU) $(DEFINES)
-LDFLAGS = -Wl,--relax,--gc-sections -Wl,--section-start=.text=$(BOOTLOADER_ADDRESS),-Map=main.map
+LDFLAGS = -Wl,--relax,--gc-sections \
+	  -Wl,--section-start=.text=$(BOOTLOADER_ADDRESS),-Map=bootloader.map
 
 OBJECTS =  usbdrv/usbdrvasm.o usbdrv/oddebug.o
 OBJECTS += libs-device/osccal.o
 
+OSCCAL_OBJECTS = osccal/osccal.o
+VUSB_OBJECTS =  usbdrv/usbdrvasm.o usbdrv/oddebug.o
+BOOTLOADER_OBJECTS = bootloader/main.o $(OSCCAL_OBJECTS) $(VUSB_OBJECTS)
+FIRMWARE_OBJECTS = firmware/main.o $(OSCCAL_OBJECTS) $(VUSB_OBJECTS)
+
 # symbolic targets:
-all: main.hex
+all: bootloader.hex firmware.hex
 
 .c.o:
 	$(CC) $(CFLAGS) -c $< -o $@ -Wa,-ahls=$<.lst
@@ -70,17 +72,14 @@ lock:
 read_fuses:
 	$(UISP) --rd_fuses
 
-#clean:
-#	rm -f main.hex main.bin main.c.lst main.map *.o usbdrv/*.o main.s usbdrv/oddebug.s usbdrv/usbdrv.s libs-device/osccal.o
-
 # file targets:
 main.bin:	$(OBJECTS)
 	$(CC) $(CFLAGS) -o main.bin $(OBJECTS) $(LDFLAGS)
 
-main.hex:	main.bin
-	rm -f main.hex main.eep.hex
-	avr-objcopy -j .text -j .data -O ihex main.bin main.hex
-	avr-size main.hex
+%.hex: %.bin
+	rm -f $@ $<.eep.hex
+	avr-objcopy -j .text -j .data -O ihex $? $@
+	avr-size $@
 
 disasm:	main.bin
 	avr-objdump -d main.bin
@@ -91,16 +90,18 @@ cpp:
 # Main targets
 
 clean:
-	rm -f osccal/*.o osccal/*.lst
+	rm -f *.map
+	rm -f *.hex
+	rm -f *.bin
+	rm -f $(BOOTLOADER_OBJECTS)
+	rm -f $(FIRMWARE_OBJECTS)
+	rm -f osccal/*.lst
+	rm -f usbdrv/*.lst
+	rm -f bootloader/*.lst
+	rm -f firmware/*.lst
 
-osccal/osccal.o: usbconfig.h osccal/*.c osccal/*.h
-	$(CC) $(CFLAGS) -c -o osccal/osccal.o osccal/*.c
+bootloader.bin: $(BOOTLOADER_OBJECTS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $?
 
-vusb:
-	$(CC)
-
-bootloader:
-	$(CC)
-
-firmware:
-	$(CC)
+firmware.bin: $(FIRMWARE_OBJECTS)
+	$(CC) $(CFLAGS)
