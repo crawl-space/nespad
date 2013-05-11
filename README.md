@@ -1,7 +1,28 @@
-NESPAD
-======
+# NESPAD
 
 It's a USB NES controller!
+
+## Flashing
+
+Begin by compiling everything, then flashing the bootloader with your
+programmer of choice.
+
+```bash
+# start by compiling everything
+make
+# set the fuse bits
+make fuse
+# flash the bootloader
+make flash
+```
+
+Now you can program via a USB connection.
+
+```
+make flash-firmware
+```
+
+## References
 
 Based on the great work of others:
  - usb: [v-usb](http://www.obdev.at/products/vusb/index.html)
