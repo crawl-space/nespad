@@ -31,10 +31,9 @@ DEFINES = -DBOOTLOADER_ADDRESS=0x$(BOOTLOADER_ADDRESS) #-DDEBUG_LEVEL=2
 CFLAGS = -Wall -Os -fno-move-loop-invariants -fno-tree-scev-cprop \
 	 -fno-inline-small-functions -I. -Ilibs-device -mmcu=$(DEVICE) \
 	 -DF_CPU=$(F_CPU) $(DEFINES)
-LDFLAGS = -Wl,--relax,--gc-sections -Wl,\
-	  --section-start=.text=$(BOOTLOADER_ADDRESS),-Map=main.map
+LDFLAGS = -Wl,--relax,--gc-sections -Wl,--section-start=.text=$(BOOTLOADER_ADDRESS),-Map=main.map
 
-OBJECTS =  usbdrv/usbdrvasm.o usbdrv/oddebug.o main.o
+OBJECTS =  usbdrv/usbdrvasm.o usbdrv/oddebug.o
 OBJECTS += libs-device/osccal.o
 
 # symbolic targets:
@@ -71,8 +70,8 @@ lock:
 read_fuses:
 	$(UISP) --rd_fuses
 
-clean:
-	rm -f main.hex main.bin main.c.lst main.map *.o usbdrv/*.o main.s usbdrv/oddebug.s usbdrv/usbdrv.s libs-device/osccal.o
+#clean:
+#	rm -f main.hex main.bin main.c.lst main.map *.o usbdrv/*.o main.s usbdrv/oddebug.s usbdrv/usbdrv.s libs-device/osccal.o
 
 # file targets:
 main.bin:	$(OBJECTS)
@@ -89,31 +88,19 @@ disasm:	main.bin
 cpp:
 	$(CC) $(CFLAGS) -E main.c
 
-# Special rules for generating hex files for various devices and clock speeds
-ALLHEXFILES = hexfiles/mega8_12mhz.hex hexfiles/mega8_15mhz.hex hexfiles/mega8_16mhz.hex \
-	hexfiles/mega88_12mhz.hex hexfiles/mega88_15mhz.hex hexfiles/mega88_16mhz.hex hexfiles/mega88_20mhz.hex\
-	hexfiles/mega168_12mhz.hex hexfiles/mega168_15mhz.hex hexfiles/mega168_16mhz.hex hexfiles/mega168_20mhz.hex\
-	hexfiles/mega328p_12mhz.hex hexfiles/mega328p_15mhz.hex hexfiles/mega328p_16mhz.hex hexfiles/mega328p_20mhz.hex
+# Main targets
 
-allhexfiles: $(ALLHEXFILES)
-	$(MAKE) clean
-	avr-size hexfiles/*.hex
+clean:
+	rm -f osccal/*.o osccal/*.lst
 
-$(ALLHEXFILES):
-	@[ -d hexfiles ] || mkdir hexfiles
-	@device=`echo $@ | sed -e 's|.*/mega||g' -e 's|_.*||g'`; \
-	clock=`echo $@ | sed -e 's|.*_||g' -e 's|mhz.*||g'`; \
-	addr=`echo $$device | sed -e 's/\([0-9]\)8/\1/g' | awk '{printf("%x", ($$1 - 2) * 1024)}'`; \
-	echo "### Make with F_CPU=$${clock}000000 DEVICE=atmega$$device BOOTLOADER_ADDRESS=$$addr"; \
-	$(MAKE) clean; \
-	$(MAKE) main.hex F_CPU=$${clock}000000 DEVICE=atmega$$device BOOTLOADER_ADDRESS=$$addr DEFINES=-DUSE_AUTOCONFIG=1
-	mv main.hex $@
+osccal/osccal.o: usbconfig.h osccal/*.c osccal/*.h
+	$(CC) $(CFLAGS) -c -o osccal/osccal.o osccal/*.c
 
 vusb:
-	$(MAKE)
+	$(CC)
 
 bootloader:
-	$(MAKE)
+	$(CC)
 
 firmware:
-	$(MAKE)
+	$(CC)
