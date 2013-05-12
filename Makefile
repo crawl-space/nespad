@@ -44,18 +44,14 @@ all: bootloader.hex firmware.hex
 .c.o:
 	$(CC) $(CFLAGS) -c $< -o $@ -Wa,-ahls=$<.lst
 
-# "-x assembler-with-cpp" should not be necessary since this is the default
-# file type for the .S (with capital S) extension. However, upper case
-# characters are not always preserved on Windows. To ensure WinAVR
-# compatibility define the file type manually.
 .S.o:
 	$(CC) $(CFLAGS) -x assembler-with-cpp -c $< -o $@
 
 .c.s:
 	$(CC) $(CFLAGS) -S $< -o $@
 
-flash:	all
-	$(AVRDUDE) -U flash:w:main.hex:i
+flash: bootloader.hex 
+	$(AVRDUDE) -U flash:w:bootloader.hex:i
 
 readflash:
 	$(AVRDUDE) -U flash:r:read.hex:i
