@@ -25,13 +25,10 @@ CC = avr-gcc
 DEFINES = -DBOOTLOADER_ADDRESS=0x$(BOOTLOADER_ADDRESS) #-DDEBUG_LEVEL=2
 # Remove the -fno-* options when you use gcc 3, it does not understand them
 CFLAGS = -Wall -Os -fno-move-loop-invariants -fno-tree-scev-cprop \
-	 -fno-inline-small-functions -I. -Ilibs-device -mmcu=$(DEVICE) \
+	 -fno-inline-small-functions -I. -Iosccal -mmcu=$(DEVICE) \
 	 -DF_CPU=$(F_CPU) $(DEFINES)
 LDFLAGS = -Wl,--relax,--gc-sections \
 	  -Wl,--section-start=.text=$(BOOTLOADER_ADDRESS),-Map=bootloader.map
-
-OBJECTS =  usbdrv/usbdrvasm.o usbdrv/oddebug.o
-OBJECTS += libs-device/osccal.o
 
 OSCCAL_OBJECTS = osccal/osccal.o
 VUSB_OBJECTS =  usbdrv/usbdrvasm.o usbdrv/oddebug.o
@@ -68,15 +65,6 @@ lock:
 read_fuses:
 	$(UISP) --rd_fuses
 
-# file targets:
-main.bin:	$(OBJECTS)
-	$(CC) $(CFLAGS) -o main.bin $(OBJECTS) $(LDFLAGS)
-
-%.hex: %.bin
-	rm -f $@ $<.eep.hex
-	avr-objcopy -j .text -j .data -O ihex $? $@
-	avr-size $@
-
 disasm:	main.bin
 	avr-objdump -d main.bin
 
@@ -96,8 +84,13 @@ clean:
 	rm -f bootloader/*.lst
 	rm -f firmware/*.lst
 
+%.hex: %.bin
+	rm -f $@ $<.eep.hex
+	avr-objcopy -j .text -j .data -O ihex $? $@
+	avr-size $@
+
 bootloader.bin: $(BOOTLOADER_OBJECTS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $?
 
 firmware.bin: $(FIRMWARE_OBJECTS)
-	$(CC) $(CFLAGS)
+	$(CC) $(CFLAGS) -o $@ $?
