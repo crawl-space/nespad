@@ -48,10 +48,10 @@ FIRMWARE_OBJECTS = $(BUILDDIR)/firmware/main.o $(OSCCAL_OBJECTS) \
 # symbolic targets:
 all: bootloader firmware
 
-$(BUILDDIR)/%.o: %.c $(BUILDDIR)
+$(BUILDDIR)/%.o: %.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILDDIR)/%.o: %.S $(BUILDDIR)
+$(BUILDDIR)/%.o: %.S | $(BUILDDIR)
 	$(CC) $(CFLAGS) -x assembler-with-cpp -c $< -o $@
 
 
@@ -61,7 +61,7 @@ $(BUILDDIR)/%.o: %.S $(BUILDDIR)
 #.c.s: $(BUILDDIR)
 #	$(CC) $(CFLAGS) -S $< -o $(BUILDDIR)/$@
 
-flash: bootloader.hex 
+flash: bootloader
 	$(AVRDUDE) -U flash:w:bootloader.hex:i
 
 readflash:
@@ -86,7 +86,7 @@ clean:
 	rm -rf build
 
 %.hex: $(BUILDDIR)/%.bin
-	avr-objcopy -j .text -j .data -O ihex $? $@
+	avr-objcopy -j .text -j .data -O ihex $^ $@
 	avr-size $@
 
 bootloader:
@@ -98,11 +98,12 @@ firmware:
 
 $(BUILDDIR): $(BUILDDIR)/usbdrv $(BUILDDIR)/osccal $(BUILDDIR)/bootloader \
 	$(BUILDDIR)/firmware
+
 $(BUILDDIR)/%:
 	mkdir -p $@
 
 $(BUILDDIR)/bootloader.bin: $(BOOTLOADER_OBJECTS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $?
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 $(BUILDDIR)/firmware.bin: $(FIRMWARE_OBJECTS)
-	$(CC) $(CFLAGS) -o $@ $?
+	$(CC) $(CFLAGS) -o $@ $^
