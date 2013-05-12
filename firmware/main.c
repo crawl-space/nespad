@@ -10,7 +10,7 @@
 #include <avr/wdt.h>
 #include <util/delay.h>
 
-#include "usbdrv.h"
+#include "usbdrv/usbdrv.h"
 #include "main.h"
 
 struct{
