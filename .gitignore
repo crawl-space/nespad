@@ -1,4 +1,4 @@
 *.sw?
 *.hex
-programmer/micronucleus
+micronucleus
 build

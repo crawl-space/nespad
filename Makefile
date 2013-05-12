@@ -46,7 +46,7 @@ FIRMWARE_OBJECTS = $(BUILDDIR)/firmware/main.o $(OSCCAL_OBJECTS) \
 		   $(VUSB_OBJECTS) $(BUILDDIR)/usbdrv/usbdrv.o
 
 # symbolic targets:
-all: bootloader firmware
+all: bootloader firmware micronucleus
 
 $(BUILDDIR)/%.o: %.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -82,6 +82,7 @@ read_fuses:
 # Main targets
 
 clean:
+	rm -f micronucleus
 	rm -f *.hex
 	rm -rf build
 
@@ -97,9 +98,9 @@ firmware:
 .PHONY: bootloader firmware
 
 $(BUILDDIR): $(BUILDDIR)/usbdrv $(BUILDDIR)/osccal $(BUILDDIR)/bootloader \
-	$(BUILDDIR)/firmware
+	$(BUILDDIR)/firmware $(BUILDDIR)/programmer
 
-$(BUILDDIR)/%:
+build/%:
 	mkdir -p $@
 
 $(BUILDDIR)/bootloader.bin: $(BOOTLOADER_OBJECTS)
@@ -107,3 +108,28 @@ $(BUILDDIR)/bootloader.bin: $(BOOTLOADER_OBJECTS)
 
 $(BUILDDIR)/firmware.bin: $(FIRMWARE_OBJECTS)
 	$(CC) $(CFLAGS) -o $@ $^
+
+######################################################
+# Programmer Building (micronucleus)
+######################################################
+
+GCC = gcc
+
+MICRONUCLEUS_FILES = programmer/micronucleus.c\
+		     programmer/library/littleWire_util.c\
+		     programmer/library/micronucleus_lib.c
+
+USBFLAGS = `libusb-config --cflags`
+USBLIBS = `libusb-config --libs`
+OSFLAG = -D LINUX
+
+MICRONUCLEUS_CFLAGS = $(USBFLAGS) $(USBLIBS) -Iprogrammer/library -O -g $(OSFLAG)
+
+micronucleus_builddir: build/programmer build/programmer/library
+
+build/programmer/%.o: programmer/%.c | micronucleus_builddir
+	$(GCC) $(MICRONUCLEUS_CFLAGS) -c -o $@ $^
+
+micronucleus: $(addprefix build/,$(addsuffix .o, $(basename $(MICRONUCLEUS_FILES))))
+	echo $(addprefix build/, $(addsuffix .o, $(basename $(MICRONUCLEUS_FILES))))
+	$(GCC) $(MICRONUCLEUS_CFLAGS) -o $@ $^
