@@ -43,7 +43,7 @@ VUSB_OBJECTS =  $(BUILDDIR)/usbdrv/usbdrvasm.o $(BUILDDIR)/usbdrv/oddebug.o
 BOOTLOADER_OBJECTS = $(BUILDDIR)/bootloader/main.o $(OSCCAL_OBJECTS) \
 		     $(VUSB_OBJECTS)
 FIRMWARE_OBJECTS = $(BUILDDIR)/firmware/main.o $(OSCCAL_OBJECTS) \
-		   $(VUSB_OBJECTS)
+		   $(VUSB_OBJECTS) $(BUILDDIR)/usbdrv/usbdrv.o
 
 # symbolic targets:
 all: bootloader firmware
@@ -83,9 +83,6 @@ read_fuses:
 
 clean:
 	rm -f *.hex
-	rm -f *.bin
-	rm -f $(BOOTLOADER_OBJECTS)
-	rm -f $(FIRMWARE_OBJECTS)
 	rm -rf build
 
 %.hex: $(BUILDDIR)/%.bin
@@ -93,9 +90,9 @@ clean:
 	avr-size $@
 
 bootloader:
-	BUILDDIR=build/$@ $(MAKE) $@.hex
+	BUILDDIR=build/$@ INCLUDES=-I$@ $(MAKE) $@.hex
 firmware:
-	BUILDDIR=build/$@ $(MAKE) $@.hex
+	BUILDDIR=build/$@ INCLUDES=-I$@ $(MAKE) $@.hex
 
 .PHONY: bootloader firmware
 
