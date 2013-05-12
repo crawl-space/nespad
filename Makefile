@@ -62,12 +62,6 @@ lock:
 read_fuses:
 	$(UISP) --rd_fuses
 
-disasm:	main.bin
-	avr-objdump -d main.bin
-
-cpp:
-	$(CC) $(CFLAGS) -E main.c
-
 # Main targets
 
 clean:
