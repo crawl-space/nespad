@@ -1,3 +1,7 @@
+# to use the same copy of v-usb with different defines, compiling needs to run
+# through a subcall to make with BUILDDIR set.
+BUILDDIR ?= /dev/null
+
 F_CPU = 16500000
 DEVICE = attiny85
 FUSEOPT = $(FUSEOPT_t85)
@@ -30,19 +34,28 @@ CFLAGS = -Wall -Os -fno-move-loop-invariants -fno-tree-scev-cprop \
 LDFLAGS = -Wl,--relax,--gc-sections \
 	  -Wl,--section-start=.text=$(BOOTLOADER_ADDRESS)
 
-OSCCAL_OBJECTS = osccal/osccal.o
-VUSB_OBJECTS =  usbdrv/usbdrvasm.o usbdrv/oddebug.o
-BOOTLOADER_OBJECTS = bootloader/main.o $(OSCCAL_OBJECTS) $(VUSB_OBJECTS)
-FIRMWARE_OBJECTS = firmware/main.o $(OSCCAL_OBJECTS) $(VUSB_OBJECTS)
+OSCCAL_OBJECTS = $(BUILDDIR)/osccal/osccal.o
+VUSB_OBJECTS =  $(BUILDDIR)/usbdrv/usbdrvasm.o $(BUILDDIR)/usbdrv/oddebug.o
+BOOTLOADER_OBJECTS = $(BUILDDIR)/bootloader/main.o $(OSCCAL_OBJECTS) \
+		     $(VUSB_OBJECTS)
+FIRMWARE_OBJECTS = $(BUILDDIR)/firmware/main.o $(OSCCAL_OBJECTS) \
+		   $(VUSB_OBJECTS)
 
 # symbolic targets:
-all: bootloader.hex firmware.hex
+all: bootloader firmware
 
-.S.o:
+$(BUILDDIR)/%.o: %.c $(BUILDDIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILDDIR)/%.o: %.S $(BUILDDIR)
 	$(CC) $(CFLAGS) -x assembler-with-cpp -c $< -o $@
 
-.c.s:
-	$(CC) $(CFLAGS) -S $< -o $@
+
+#.S.o: $(BUILDDIR)
+#	$(CC) $(CFLAGS) -x assembler-with-cpp -c $< -o $(BUILDDIR)/$@
+
+#.c.s: $(BUILDDIR)
+#	$(CC) $(CFLAGS) -S $< -o $(BUILDDIR)/$@
 
 flash: bootloader.hex 
 	$(AVRDUDE) -U flash:w:bootloader.hex:i
@@ -69,14 +82,26 @@ clean:
 	rm -f *.bin
 	rm -f $(BOOTLOADER_OBJECTS)
 	rm -f $(FIRMWARE_OBJECTS)
+	rm -rf build
 
-%.hex: %.bin
-	rm -f $@ $<.eep.hex
+%.hex: $(BUILDDIR)/%.bin
 	avr-objcopy -j .text -j .data -O ihex $? $@
 	avr-size $@
 
-bootloader.bin: $(BOOTLOADER_OBJECTS)
+bootloader:
+	BUILDDIR=build/$@ $(MAKE) $@.hex
+firmware:
+	BUILDDIR=build/$@ $(MAKE) $@.hex
+
+.PHONY: bootloader firmware
+
+$(BUILDDIR): $(BUILDDIR)/usbdrv $(BUILDDIR)/osccal $(BUILDDIR)/bootloader \
+	$(BUILDDIR)/firmware
+$(BUILDDIR)/%:
+	mkdir -p $@
+
+$(BUILDDIR)/bootloader.bin: $(BOOTLOADER_OBJECTS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $?
 
-firmware.bin: $(FIRMWARE_OBJECTS)
+$(BUILDDIR)/firmware.bin: $(FIRMWARE_OBJECTS)
 	$(CC) $(CFLAGS) -o $@ $?
