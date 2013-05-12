@@ -1,6 +1,7 @@
 # to use the same copy of v-usb with different defines, compiling needs to run
 # through a subcall to make with BUILDDIR set.
 BUILDDIR ?= /dev/null
+INCLUDES ?=
 
 F_CPU = 16500000
 DEVICE = attiny85
@@ -29,8 +30,11 @@ CC = avr-gcc
 DEFINES = -DBOOTLOADER_ADDRESS=0x$(BOOTLOADER_ADDRESS) #-DDEBUG_LEVEL=2
 # Remove the -fno-* options when you use gcc 3, it does not understand them
 CFLAGS = -Wall -Os -fno-move-loop-invariants -fno-tree-scev-cprop \
-	 -fno-inline-small-functions -I. -Iosccal -mmcu=$(DEVICE) \
+	 -fno-inline-small-functions -I. -mmcu=$(DEVICE) \
 	 -DF_CPU=$(F_CPU) $(DEFINES)
+
+CFLAGS += $(INCLUDES)
+
 LDFLAGS = -Wl,--relax,--gc-sections \
 	  -Wl,--section-start=.text=$(BOOTLOADER_ADDRESS)
 
