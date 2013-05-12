@@ -12,6 +12,8 @@
 #ifndef __bootloaderconfig_h_included__
 #define __bootloaderconfig_h_included__
 
+#include "common.h"
+
 // uncomment this to enable the 'jumper from d5 to gnd to enable programming' mode
 //#define BUILD_JUMPER_MODE 1
 
@@ -236,7 +238,7 @@ these macros are defined, the boot loader uses them.
 		  DDRB = 0;
 		}
 	#endif /* __ASSEMBLER__ */
-#else
+#elif 0
 	#define bootLoaderInit()
 	#define bootLoaderExit()
 	#define bootLoaderCondition()   (idlePolls < (AUTO_EXIT_MS * 10UL))
@@ -248,6 +250,43 @@ these macros are defined, the boot loader uses them.
 	#else
 	  #define bootLoaderStartCondition() 1
 	#endif
+#endif
+
+#define bootLoaderInit()
+#define bootLoaderExit()
+#define bootLoaderCondition()   (idlePolls < (AUTO_EXIT_MS * 10UL))
+
+#ifndef __ASSEMBLER__   /* assembler cannot parse function definitions */
+static inline int bootLoaderStartCondition() {
+    sei(); // Enable interrupts after re-enumeration
+
+    sbi(NES_DDR, CLK);
+    cbi(NES_DDR, OUT);
+    sbi(NES_DDR, LATCH);
+
+    cbi(NES_PORT, CLK);
+    cbi(NES_PORT, LATCH);
+
+
+
+	sbi(NES_PORT, LATCH);
+	_delay_us(1); // Latch pulse width >= 500ns
+	cbi(NES_PORT, LATCH);
+	_delay_us(1); // Propagation time <= 1000ns
+
+	STROBE_CLK(); // A
+	STROBE_CLK(); // B
+
+	if(!bit_is_clear(NES_PIN, OUT))
+		return 0;
+
+	STROBE_CLK();
+
+	if(!bit_is_clear(NES_PIN, OUT))
+		return 0;
+
+	return 1;
+}
 #endif
 
 /* ----------------------- Optional MCU Description ------------------------ */

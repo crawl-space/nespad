@@ -1,15 +1,6 @@
 #include <avr/pgmspace.h>
 
-#define NES_DDR DDRB
-#define NES_PORT PORTB
-#define NES_PIN PINB
-#define CLK 4
-#define OUT 0
-#define LATCH 3
-
-#define sbi(sfr, bit)   ((sfr) |= _BV(bit))
-#define cbi(sfr, bit)   ((sfr) &= ~(_BV(bit)))
-#define xbi(sfr, bit)   ((sfr) ^= _BV(bit))
+#include "common.h"
 
 const PROGMEM char usbHidReportDescriptor[42] = {
     0x05, 0x01,                    // USAGE_PAGE (Generic Desktop)

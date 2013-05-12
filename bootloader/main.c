@@ -8,7 +8,7 @@
  * Portions Copyright: (c) 2012 Louis Beaudoin (USBaspLoader-tiny85)
  * License: GNU GPL v2 (see License.txt)
  */
- 
+
 #define MICRONUCLEUS_VERSION_MAJOR 1
 #define MICRONUCLEUS_VERSION_MINOR 6
 // how many milliseconds should host wait till it sends another erase or write?
@@ -137,11 +137,11 @@ static inline void eraseApplication(void) {
     cli();
     while (currentAddress) {
         currentAddress -= SPM_PAGESIZE;
-        
+
         boot_page_erase(currentAddress);
         boot_spm_busy_wait();
     }
-    
+
     fillFlashWithVectors();
     sei();
 }
@@ -174,7 +174,7 @@ static void writeWordToPageBuffer(uint16_t data) {
     if (currentAddress == (RESET_VECTOR_OFFSET * 2) || currentAddress == (USBPLUS_VECTOR_OFFSET * 2)) {
         data = 0xC000 + (BOOTLOADER_ADDRESS/2) - 1;
     }
-    
+
     // at end of page just before bootloader, write in tinyVector table
     // see http://embedded-creations.com/projects/attiny85-usb-bootloader-overview/avr-jtag-programmer/
     // for info on how the tiny vector table works
@@ -185,24 +185,24 @@ static void writeWordToPageBuffer(uint16_t data) {
     } else if (currentAddress == BOOTLOADER_ADDRESS - TINYVECTOR_OSCCAL_OFFSET) {
         data = OSCCAL;
     }
-    
-    
+
+
     // clear page buffer as a precaution before filling the buffer on the first page
     // in case the bootloader somehow ran after user program and there was something
     // in the page buffer already
     if (currentAddress == 0x0000) __boot_page_fill_clear();
-    
+
     cli();
     boot_page_fill(currentAddress, data);
     sei();
-    
+
     // only need to erase if there is data already in the page that doesn't match what we're programming
     // TODO: what about this: if (pgm_read_word(currentAddress) & data != data) { ??? should work right?
     //if (pgm_read_word(currentAddress) != data && pgm_read_word(currentAddress) != 0xFFFF) {
     //if ((pgm_read_word(currentAddress) & data) != data) {
     //    fireEvent(EVENT_PAGE_NEEDS_ERASE);
     //}
-    
+
     // increment progmem address by one word
     currentAddress += 2;
 }
@@ -215,8 +215,8 @@ static void fillFlashWithVectors(void) {
     //for (i = currentAddress % SPM_PAGESIZE; i < SPM_PAGESIZE; i += 2) {
     //    writeWordToPageBuffer(0xFFFF); // is where vector tables are sorted out
     //}
-    
-    // TODO: Or more simply: 
+
+    // TODO: Or more simply:
     do {
         writeWordToPageBuffer(0xFFFF);
     } while (currentAddress % SPM_PAGESIZE);
@@ -229,33 +229,33 @@ static void fillFlashWithVectors(void) {
 static uchar usbFunctionSetup(uchar data[8]) {
     usbRequest_t *rq = (void *)data;
     idlePolls = 0; // reset idle polls when we get usb traffic
-    
+
     static uchar replyBuffer[4] = {
         (((uint)PROGMEM_SIZE) >> 8) & 0xff,
         ((uint)PROGMEM_SIZE) & 0xff,
         SPM_PAGESIZE,
         MICRONUCLEUS_WRITE_SLEEP
     };
-    
+
     if (rq->bRequest == 0) { // get device info
         usbMsgPtr = replyBuffer;
         return 4;
-        
+
     } else if (rq->bRequest == 1) { // write page
         //writeLength = rq->wValue.word;
         currentAddress = rq->wIndex.word;
-        
+
         return USB_NO_MSG; // hands off work to usbFunctionWrite
-        
+
     } else if (rq->bRequest == 2) { // erase application
         fireEvent(EVENT_ERASE_APPLICATION);
-        
+
     } else { // exit bootloader
 #       if BOOTLOADER_CAN_EXIT
             fireEvent(EVENT_EXECUTE);
 #       endif
     }
-    
+
     return 0;
 }
 
@@ -264,34 +264,34 @@ static uchar usbFunctionSetup(uchar data[8]) {
 static uchar usbFunctionWrite(uchar *data, uchar length) {
     //if (length > writeLength) length = writeLength; // test for missing final page bug
     //writeLength -= length;
-    
+
     do {
-        // remember vectors or the tinyvector table 
+        // remember vectors or the tinyvector table
         if (currentAddress == RESET_VECTOR_OFFSET * 2) {
             vectorTemp[0] = *(short *)data;
         }
-        
+
         if (currentAddress == USBPLUS_VECTOR_OFFSET * 2) {
             vectorTemp[1] = *(short *)data;
         }
-        
+
         // make sure we don't write over the bootloader!
         if (currentAddress >= BOOTLOADER_ADDRESS) {
             //__boot_page_fill_clear();
             break;
         }
-        
+
         writeWordToPageBuffer(*(uint16_t *) data);
         data += 2; // advance data pointer
         length -= 2;
     } while(length);
-    
+
     // if we have now reached another page boundary, we're done
     //uchar isLast = (writeLength == 0);
     uchar isLast = ((currentAddress % SPM_PAGESIZE) == 0);
     // definitely need this if! seems usbFunctionWrite gets called again in future usbPoll's in the runloop!
     if (isLast) fireEvent(EVENT_WRITE_PAGE); // ask runloop to write our page
-    
+
     return isLast; // let vusb know we're done with this request
 }
 
@@ -335,7 +335,7 @@ static inline void tiny85FlashInit(void) {
 static inline void tiny85FlashWrites(void) {
     _delay_us(2000); // TODO: why is this here? - it just adds pointless two level deep loops seems like?
     // write page to flash, interrupts will be disabled for > 4.5ms including erase
-    
+
     // TODO: Do we need this? Wouldn't the programmer always send full sized pages?
     if (currentAddress % SPM_PAGESIZE) { // when we aren't perfectly aligned to a flash page boundary
         fillFlashWithVectors(); // fill up the rest of the page with 0xFFFF (unprogrammed) bits
@@ -358,7 +358,7 @@ static inline void tiny85FlashWrites(void) {
 // reset system to a normal state and launch user program
 static inline void leaveBootloader(void) {
     _delay_ms(10); // removing delay causes USB errors
-    
+
     //DBG1(0x01, 0, 0);
     bootLoaderExit();
     cli();
@@ -368,7 +368,7 @@ static inline void leaveBootloader(void) {
     // clear magic word from bottom of stack before jumping to the app
     *(uint8_t*)(RAMEND) = 0x00;
     *(uint8_t*)(RAMEND-1) = 0x00;
-    
+
     // adjust clock to previous calibration value, so user program always starts with same calibration
     // as when it was uploaded originally
     // TODO: Test this and find out, do we need the +1 offset?
@@ -392,12 +392,12 @@ int main(void) {
     #if (!SET_CLOCK_PRESCALER) && LOW_POWER_MODE
         uint8_t prescaler_default = CLKPR;
     #endif
-    
+
     wdt_disable();      /* main app may have enabled watchdog */
     tiny85FlashInit();
     bootLoaderInit();
-    
-    
+
+
     if (bootLoaderStartCondition()) {
         #if LOW_POWER_MODE
             // turn off clock prescalling - chip must run at full speed for usb
@@ -405,30 +405,30 @@ int main(void) {
             CLKPR = 1 << CLKPCE;
             CLKPR = 0;
         #endif
-        
+
         initForUsbConnectivity();
         do {
             usbPoll();
             _delay_us(100);
             idlePolls++;
-            
+
             // these next two freeze the chip for ~ 4.5ms, breaking usb protocol
             // and usually both of these will activate in the same loop, so host
             // needs to wait > 9ms before next usb request
             if (isEvent(EVENT_ERASE_APPLICATION)) eraseApplication();
             if (isEvent(EVENT_WRITE_PAGE)) tiny85FlashWrites();
 
-#           if BOOTLOADER_CAN_EXIT            
+#           if BOOTLOADER_CAN_EXIT
                 if (isEvent(EVENT_EXECUTE)) { // when host requests device run uploaded program
                     break;
                 }
 #           endif
-            
+
             clearEvents();
-            
+
         } while(bootLoaderCondition());  /* main event loop runs so long as bootLoaderCondition remains truthy */
     }
-    
+
     // set clock prescaler to desired clock speed (changing from clkdiv8, or no division, depending on fuses)
     #if LOW_POWER_MODE
         #ifdef SET_CLOCK_PRESCALER
@@ -439,7 +439,7 @@ int main(void) {
             CLKPR = prescaler_default;
         #endif
     #endif
-    
+
     // slowly bring down OSCCAL to it's original value before launching in to user program
     #ifdef RESTORE_OSCCAL
         while (OSCCAL > osccal_default) { OSCCAL -= 1; }

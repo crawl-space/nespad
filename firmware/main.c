@@ -66,12 +66,6 @@ void hadUsbReset() {
     OSCCAL = bestCal;
 }
 
-// Clock pulse width >= 500ns
-#define STROBE_CLK() sbi(NES_PORT, CLK); \
-                     _delay_us(1); \
-                     cbi(NES_PORT, CLK); \
-                     _delay_us(1);
-
 int main() {
     uchar i;
 
