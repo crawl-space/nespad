@@ -1,5 +1,4 @@
 *.sw?
-*.o
-*.bin
 *.hex
 programmer/micronucleus
+build
