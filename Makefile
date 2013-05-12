@@ -28,7 +28,7 @@ CFLAGS = -Wall -Os -fno-move-loop-invariants -fno-tree-scev-cprop \
 	 -fno-inline-small-functions -I. -Iosccal -mmcu=$(DEVICE) \
 	 -DF_CPU=$(F_CPU) $(DEFINES)
 LDFLAGS = -Wl,--relax,--gc-sections \
-	  -Wl,--section-start=.text=$(BOOTLOADER_ADDRESS),-Map=bootloader.map
+	  -Wl,--section-start=.text=$(BOOTLOADER_ADDRESS)
 
 OSCCAL_OBJECTS = osccal/osccal.o
 VUSB_OBJECTS =  usbdrv/usbdrvasm.o usbdrv/oddebug.o
@@ -37,9 +37,6 @@ FIRMWARE_OBJECTS = firmware/main.o $(OSCCAL_OBJECTS) $(VUSB_OBJECTS)
 
 # symbolic targets:
 all: bootloader.hex firmware.hex
-
-.c.o:
-	$(CC) $(CFLAGS) -c $< -o $@ -Wa,-ahls=$<.lst
 
 .S.o:
 	$(CC) $(CFLAGS) -x assembler-with-cpp -c $< -o $@
@@ -74,15 +71,10 @@ cpp:
 # Main targets
 
 clean:
-	rm -f *.map
 	rm -f *.hex
 	rm -f *.bin
 	rm -f $(BOOTLOADER_OBJECTS)
 	rm -f $(FIRMWARE_OBJECTS)
-	rm -f osccal/*.lst
-	rm -f usbdrv/*.lst
-	rm -f bootloader/*.lst
-	rm -f firmware/*.lst
 
 %.hex: %.bin
 	rm -f $@ $<.eep.hex

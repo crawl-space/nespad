@@ -1,7 +1,5 @@
 *.sw?
 *.o
-*.lst
-*.map
 *.bin
 *.hex
 programmer/micronucleus
